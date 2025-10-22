@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gestion-usuarios
+  labels:
+    app: gestion-usuarios
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gestion-usuarios
+  template:
+    metadata:
+      name: gestion-usuarios
+      labels:
+        app: gestion-usuarios
+    spec:
+      containers:
+        - name: gestion-usuarios
+          image: acmeneses496/gestion-usuarios
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+      restartPolicy: Always
+      
