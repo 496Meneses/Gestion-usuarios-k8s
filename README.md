@@ -12,7 +12,7 @@ Microservicio sencillo para gestionar usuarios, creado como práctica de aprendi
 - Docker
 - kubectl (con acceso a un cluster Kubernetes)
 - (Opcional) Minikube o kind para pruebas locales
-- Go / Node / Python / Java (según lenguaje del microservicio) — instalar si desea ejecutar fuera de contenedor
+- Java — instalar si desea ejecutar fuera de contenedor
 
 ## Ejecutar con Docker (local)
 1. Construir la imagen:
@@ -34,8 +34,6 @@ Microservicio sencillo para gestionar usuarios, creado como práctica de aprendi
 4. Para exponer localmente (si usa port-forward):
    kubectl port-forward deployment/gestion-usuarios 8080:8080
 
-(Los nombres de recursos pueden variar; revisar los archivos en `k8s/`.)
-
 ## Estructura sugerida del repositorio
 - /cmd, /src, /app — código fuente del microservicio
 - Dockerfile — definición de la imagen
@@ -49,9 +47,6 @@ Microservicio sencillo para gestionar usuarios, creado como práctica de aprendi
 
 ## Contribuciones
 Si quieres mejorar esta práctica (añadir tests, CI/CD, mejores manifiestos, helm chart), abre un pull request o crea un issue.
-
-## Licencia
-Añade la licencia que prefieras (p. ej. MIT) en un archivo `LICENSE`.
 
 ---
 
