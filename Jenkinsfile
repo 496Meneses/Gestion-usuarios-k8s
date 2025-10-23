@@ -17,7 +17,14 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Compilando con Maven...'
-                sh 'mvn clean install'
+                sh 'mvn clean compile'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo 'Ejecutando pruebas unitarias...'
+                sh 'mvn test'
             }
         }
 
