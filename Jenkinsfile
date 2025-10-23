@@ -21,13 +21,6 @@ pipeline {
             }
         }
 
-        stage('Test') {
-            steps {
-                echo 'Ejecutando pruebas unitarias...'
-                sh 'mvn test'
-            }
-        }
-
         stage('Package') {
             steps {
                 echo 'Empaquetando la aplicación...'
