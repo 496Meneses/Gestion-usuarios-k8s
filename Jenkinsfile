@@ -16,14 +16,24 @@ spec:
     command:
     - cat
     tty: true
+    securityContext:
+      runAsUser: 1000
+    env:
+    - name: PODMAN_USERNS
+      value: keep-id
+    volumeMounts:
+    - name: podman-storage
+      mountPath: /var/lib/containers
+  volumes:
+  - name: podman-storage
+    emptyDir: {}
 """
         }
     }
 
     environment {
-        DOCKERHUB_USER = 'acmeneses496'
         IMAGE_NAME = 'acmeneses496/gestion-usuarios'
-        IMAGE_TAG = "build-\${BUILD_NUMBER}"
+        IMAGE_TAG = "build-${BUILD_NUMBER}"
     }
 
     stages {
@@ -34,19 +44,10 @@ spec:
             }
         }
 
-        stage('Build & Test') {
-            steps {
-                container('maven') {
-                    echo '🧪 Compilando y ejecutando pruebas unitarias...'
-                    sh 'mvn clean package -DskipTests'
-                }
-            }
-        }
-
         stage('Build & Push Image') {
             steps {
                 container('podman') {
-                    echo '🐳 Construyendo y subiendo imagen con Podman...'
+                    echo '🐳 Construyendo y subiendo imagen con Podman rootless...'
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
                         sh '''
                             podman build -t ${IMAGE_NAME}:${IMAGE_TAG} .
