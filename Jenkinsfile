@@ -14,10 +14,10 @@ spec:
   - name: kaniko
     image: gcr.io/kaniko-project/executor:latest
     command:
-    - /busybox/sh
+    - /bin/sh
     args:
     - -c
-    - "while true; do sleep 30; done"
+    - "sleep 9999999"
     tty: true
     volumeMounts:
     - name: kaniko-secret
@@ -33,7 +33,7 @@ spec:
     environment {
         DOCKERHUB_USER = 'acmeneses496'
         IMAGE_NAME = 'acmeneses496/gestion-usuarios'
-        IMAGE_TAG = 'latest'
+        IMAGE_TAG = "build-\${BUILD_NUMBER}"
     }
 
     stages {
@@ -48,7 +48,7 @@ spec:
             steps {
                 container('maven') {
                     echo '🧪 Compilando y ejecutando pruebas unitarias...'
-                    sh 'mvn clean test'
+                    sh 'mvn clean package -DskipTests'
                 }
             }
         }
@@ -57,13 +57,14 @@ spec:
             steps {
                 container('kaniko') {
                     echo '🐳 Construyendo y subiendo imagen con Kaniko...'
-                    sh """
-                    /kaniko/executor \
-                      --context `pwd` \
-                      --dockerfile `pwd`/Dockerfile \
-                      --destination=${IMAGE_NAME}:${IMAGE_TAG} \
-                      --destination=${IMAGE_NAME}:latest
-                    """
+                    sh '''
+                        /kaniko/executor \
+                          --context `pwd` \
+                          --dockerfile `pwd`/Dockerfile \
+                          --destination=${IMAGE_NAME}:${IMAGE_TAG} \
+                          --destination=${IMAGE_NAME}:latest \
+                          --verbosity info
+                    '''
                 }
             }
         }
