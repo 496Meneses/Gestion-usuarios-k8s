@@ -63,7 +63,6 @@ spec:
 
   environment {
     IMAGE_NAME = 'acmeneses496/gestion-usuarios'
-    IMAGE_TAG  = "build-${BUILD_NUMBER}"
     REGISTRY   = 'docker.io'
 
     TAG_NON_MAIN_LATEST = 'true'
