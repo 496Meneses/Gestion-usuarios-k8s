@@ -13,12 +13,8 @@ spec:
     tty: true
   - name: kaniko
     image: gcr.io/kaniko-project/executor:latest
-    command:
-    - /bin/sh
     args:
-    - -c
-    - "sleep 9999999"
-    tty: true
+    - "--version"
     volumeMounts:
     - name: kaniko-secret
       mountPath: /kaniko/.docker/
