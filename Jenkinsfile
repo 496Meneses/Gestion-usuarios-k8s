@@ -1,7 +1,6 @@
 pipeline {
   agent {
     kubernetes {
-      // Pod template for Jenkins K8s plugin
       yaml """
 apiVersion: v1
 kind: Pod
@@ -12,11 +11,9 @@ spec:
       command: ["cat"]
       tty: true
       volumeMounts:
-        # Mount Docker config for authentication to Docker Hub
         - name: kaniko-secret
           mountPath: /kaniko/.docker
           readOnly: true
-        # Optional but recommended: enable Kaniko layer caching
         - name: kaniko-cache
           mountPath: /kaniko/cache
   volumes:
@@ -33,8 +30,7 @@ spec:
   }
 
   options {
-    timestamps()
-    ansiColor('xterm')
+    ansiColor('xterm') // ✅ timestamps removed
   }
 
   environment {
@@ -57,16 +53,10 @@ spec:
           echo "🐳 Construyendo y subiendo imagen con Kaniko: ${IMAGE_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
           sh '''
             set -euxo pipefail
-
-            # Kaniko reads auth from /kaniko/.docker/config.json
-            # Use the current workspace as build context and Dockerfile path
             CTX="$(pwd)"
-            DOCKERFILE_PATH="$CTX/Dockerfile"
-
-            # Build & push with caching enabled
             /kaniko/executor \
               --context="${CTX}" \
-              --dockerfile="${DOCKERFILE_PATH}" \
+              --dockerfile="${CTX}/Dockerfile" \
               --destination="${IMAGE_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}" \
               --destination="${IMAGE_REGISTRY}/${IMAGE_NAME}:latest" \
               --cache=true \
@@ -85,9 +75,6 @@ spec:
     }
     failure {
       echo "❌ Error en la construcción o subida de imagen."
-    }
-    always {
-      echo "🏁 Pipeline finalizado."
     }
   }
 }
