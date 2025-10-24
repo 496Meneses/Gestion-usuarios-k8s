@@ -11,6 +11,9 @@ spec:
     command:
     - cat
     tty: true
+    volumeMounts:
+    - name: workspace-volume
+      mountPath: /workspace
   - name: kaniko
     image: gcr.io/kaniko-project/executor:latest
     args:
@@ -18,10 +21,14 @@ spec:
     volumeMounts:
     - name: kaniko-secret
       mountPath: /kaniko/.docker/
+    - name: workspace-volume
+      mountPath: /workspace
   volumes:
   - name: kaniko-secret
     secret:
       secretName: dockerhub-credentials
+  - name: workspace-volume
+    emptyDir: {}
 """
         }
     }
