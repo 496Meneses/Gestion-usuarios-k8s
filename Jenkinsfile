@@ -1,5 +1,31 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: docker
+    image: docker:24.0.6
+    command:
+    - cat
+    tty: true
+    volumeMounts:
+    - name: docker-sock
+      mountPath: /var/run/docker.sock
+  - name: maven
+    image: maven:3.9.6-eclipse-temurin-17
+    command:
+    - cat
+    tty: true
+  volumes:
+  - name: docker-sock
+    hostPath:
+      path: /var/run/docker.sock
+"""
+        }
+    }
 
     tools {
         jdk 'jdk-17'
@@ -20,22 +46,25 @@ pipeline {
             }
         }
 
-        stage('Test') {
+        stage('Build & Test') {
             steps {
-                echo '🧪 Ejecutando pruebas unitarias...'
-                sh 'mvn test'
+                container('maven') {
+                    echo '🧪 Compilando y ejecutando pruebas unitarias...'
+                    sh 'mvn clean test'
+                }
             }
         }
 
         stage('Docker Build & Push') {
             steps {
-                echo '🐳 Construyendo y subiendo imagen a Docker Hub...'
-                script {
-                    docker.withRegistry('https://registry.hub.docker.com', 'dockerhub-credentials') {
-                        def appImage = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
-                        appImage.push()
-                        // Opcional: también puedes actualizar el tag "latest"
-                        appImage.push("latest")
+                container('docker') {
+                    echo '🐳 Construyendo y subiendo imagen a Docker Hub...'
+                    script {
+                        docker.withRegistry('https://registry.hub.docker.com', 'dockerhub-credentials') {
+                            def appImage = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
+                            appImage.push()
+                            appImage.push("latest")
+                        }
                     }
                 }
             }
