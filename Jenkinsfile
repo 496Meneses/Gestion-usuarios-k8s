@@ -22,7 +22,7 @@ spec:
   volumes:
   - name: kaniko-secret
     secret:
-      secretName: dockerhub-secret
+      secretName: dockerhub-credentials
 """
         }
     }
