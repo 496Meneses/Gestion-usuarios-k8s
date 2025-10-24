@@ -23,8 +23,6 @@ spec:
     command: ["cat"]
     tty: true
     securityContext:
-      # Si tu clúster lo permite, puedes probar a quitar privileged,
-      # pero para evitar los errores de remount mantenemos esto activo:
       privileged: true
       allowPrivilegeEscalation: true
       seccompProfile:
@@ -61,24 +59,89 @@ spec:
 
   options {
     timeout(time: 60, unit: 'MINUTES')
+    timestamps()
+    disableConcurrentBuilds()
   }
 
   environment {
-    // Nombre de repo en Docker Hub, sin prefijo de registro
+    // Repo en Docker Hub
     IMAGE_NAME = 'acmeneses496/gestion-usuarios'
-    IMAGE_TAG  = "build-${BUILD_NUMBER}"
+    // Mantengo el build-N como tag auxiliar si lo quieres usar/pushear:
+    BUILD_TAG  = "build-${BUILD_NUMBER}"
+    // Registro destino
     REGISTRY   = 'docker.io'
   }
 
   stages {
     stage('Checkout') {
       steps {
-        echo '📥 Clonando el repositorio...'
+        echo '📥 Checkout...'
         checkout scm
       }
     }
 
-    stage('Build & Push Image (Podman vfs+chroot)') {
+    stage('Preflight') {
+      steps {
+        container('podman') {
+          sh '''
+            set -Eeuo pipefail
+            : "${STORAGE_DRIVER:=vfs}"
+            : "${BUILDAH_ISOLATION:=chroot}"
+            : "${REGISTRY:?Se requiere REGISTRY}"
+            : "${IMAGE_NAME:?Se requiere IMAGE_NAME}"
+            : "${IMAGE_TAG:?Se requiere IMAGE_TAG}"
+
+            echo "🔧 Driver=${STORAGE_DRIVER}, Isolation=${BUILDAH_ISOLATION}"
+            echo "📦 Espacio en /var/lib/containers:"
+            df -h /var/lib/containers || true
+
+            podman --root /var/lib/containers --storage-driver="${STORAGE_DRIVER}" info --format '{{json .host}}' || true
+          '''
+        }
+      }
+    }
+
+    stage('Build Image') {
+      steps {
+        container('podman') {
+          sh '''
+            set -Eeuo pipefail
+            FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
+            FULL_TAGGED="${FULL_IMAGE}:${IMAGE_TAG}"
+
+            echo "🏗️ Build: ${FULL_TAGGED}"
+            podman --storage-driver="${STORAGE_DRIVER}" \
+                   --root /var/lib/containers \
+                   build \
+                     --isolation="${BUILDAH_ISOLATION}" \
+                     --jobs=1 \
+                     --log-level=info \
+                     -t "${FULL_TAGGED}" \
+                     -f Dockerfile .
+
+            # Validar existencia
+            podman --root /var/lib/containers image exists "${FULL_TAGGED}"
+          '''
+        }
+      }
+    }
+
+    stage('Tag Image') {
+      steps {
+        container('podman') {
+          sh '''
+            set -Eeuo pipefail
+            FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
+            FULL_TAGGED="${FULL_IMAGE}:${IMAGE_TAG}"
+
+            echo "🔖 Tag a :latest"
+            podman --root /var/lib/containers tag "${FULL_TAGGED}" "${FULL_IMAGE}:latest"
+          '''
+        }
+      }
+    }
+
+    stage('Registry Login') {
       steps {
         container('podman') {
           withCredentials([usernamePassword(
@@ -88,73 +151,51 @@ spec:
           )]) {
             sh '''
               set -Eeuo pipefail
-
-              : "${STORAGE_DRIVER:=vfs}"
-              : "${BUILDAH_ISOLATION:=chroot}"
-              : "${REGISTRY:?Se requiere REGISTRY}"
-              : "${IMAGE_NAME:?Se requiere IMAGE_NAME}"
-              : "${IMAGE_TAG:?Se requiere IMAGE_TAG}"
-
-              FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
-              FULL_TAGGED="${FULL_IMAGE}:${IMAGE_TAG}"
-
-              echo "🔍 Storage driver: ${STORAGE_DRIVER}"
-              echo "🔍 Isolation: ${BUILDAH_ISOLATION}"
-              echo "🎯 Imagen objetivo: ${FULL_TAGGED}"
-
-              echo "📦 Espacio en /var/lib/containers"
-              df -h /var/lib/containers || true
-
-              echo "ℹ️  podman info"
-              podman --root /var/lib/containers --storage-driver="${STORAGE_DRIVER}" info || true
-
-              echo "🏗️  Construyendo imagen..."
-              podman --storage-driver="${STORAGE_DRIVER}" \
-                     --root /var/lib/containers \
-                     build \
-                       --isolation="${BUILDAH_ISOLATION}" \
-                       --jobs=1 \
-                       --log-level=info \
-                       -t "${FULL_TAGGED}" \
-                       -f Dockerfile .
-
-              echo "🔎 Verificando existencia de la imagen construida..."
-              if ! podman --root /var/lib/containers image exists "${FULL_TAGGED}"; then
-                echo "❌ La imagen ${FULL_TAGGED} no existe tras el build. Listado local:"
-                podman --root /var/lib/containers images || true
-                exit 1
-              fi
-
-              echo "🔖 Etiquetando como latest..."
-              podman --root /var/lib/containers tag "${FULL_TAGGED}" "${FULL_IMAGE}:latest"
-
-              echo "🔐 Login a Docker Hub (oculto en logs)..."
+              echo "🔐 Login registry"
               set +x
               podman --root /var/lib/containers login -u "${DOCKERHUB_USER}" -p "${DOCKERHUB_PASS}" "${REGISTRY}"
               set -x
-
-              echo "📤 Subiendo imagen (con reintentos)..."
-              retry() {
-                attempts="${2:-3}"
-                n=0
-                until [ $n -ge "${attempts}" ]; do
-                  echo "→ Intento $((n+1))/${attempts}: $1"
-                  # shellcheck disable=SC2086
-                  sh -c "$1" && return 0
-                  n=$((n+1))
-                  sleep 3
-                done
-                return 1
-              }
-
-              retry "podman --root /var/lib/containers push '${FULL_TAGGED}'" 3
-              retry "podman --root /var/lib/containers push '${FULL_IMAGE}:latest'" 3
-              echo "🧹 Limpieza ligera de imágenes dangling..."
-              podman --root /var/lib/containers image prune -f || true
-
-              echo "✅ Build & Push finalizados"
             '''
           }
+        }
+      }
+    }
+
+    stage('Push Image') {
+      steps {
+        container('podman') {
+          sh '''
+            set -Eeuo pipefail
+            FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
+            FULL_TAGGED="${FULL_IMAGE}:${IMAGE_TAG}"
+
+            echo "📤 Push tags"
+            retry() {
+              attempts="${2:-3}"
+              n=0
+              until [ $n -ge "${attempts}" ]; do
+                sh -c "$1" && return 0
+                n=$((n+1))
+                sleep 3
+              done
+              return 1
+            }
+
+            retry "podman --root /var/lib/containers push '${FULL_TAGGED}'" 3
+            retry "podman --root /var/lib/containers push '${FULL_IMAGE}:latest'" 3
+          '''
+        }
+      }
+    }
+
+    stage('Cleanup') {
+      steps {
+        container('podman') {
+          sh '''
+            set -Eeuo pipefail
+            echo "🧹 Limpieza"
+            podman --root /var/lib/containers image prune -f || true
+          '''
         }
       }
     }
@@ -162,10 +203,10 @@ spec:
 
   post {
     success {
-      echo "✅ Imagen subida correctamente: ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+      echo "✅ Imagen subida: ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
     }
     failure {
-      echo "❌ Error en la construcción o subida de imagen."
+      echo "❌ Error en build o push"
     }
   }
 }
