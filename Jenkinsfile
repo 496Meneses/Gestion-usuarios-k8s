@@ -27,19 +27,38 @@ spec:
       allowPrivilegeEscalation: true
       seccompProfile:
         type: Unconfined
+    resources:
+      requests:
+        cpu: "1"
+        memory: "2Gi"
+      limits:
+        cpu: "2"
+        memory: "4Gi"
     env:
       - name: STORAGE_DRIVER
         value: vfs
       - name: BUILDAH_ISOLATION
         value: chroot
+      - name: PODMAN_EVENTS_BACKEND
+        value: file
+      - name: TMPDIR
+        value: /var/tmp
     volumeMounts:
       - name: podman-storage
         mountPath: /var/lib/containers
+      - name: podman-tmp
+        mountPath: /var/tmp
   volumes:
     - name: podman-storage
       emptyDir: {}
+    - name: podman-tmp
+      emptyDir: {}
 """
     }
+  }
+
+  options {
+    timeout(time: 60, unit: 'MINUTES')
   }
 
   environment {
@@ -55,32 +74,40 @@ spec:
       }
     }
 
-    stage('Build & Push Image (Podman vfs+chroot)') {
+    stage('Build & Push Image') {
       steps {
         container('podman') {
-          echo '🐳 Construyendo y subiendo imagen con Podman (vfs + chroot)...'
           withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
             sh '''
-              set -euxo pipefail
+              set -euo pipefail
 
-              # Diagnóstico: ver qué config tomó Podman
-              podman info || true
+              echo "🔍 Verificando espacio disponible..."
+              df -h /var/lib/containers || true
 
-              # Build forzando vfs + chroot y un root de almacenamiento en el emptyDir
-              podman --log-level=debug \
-                     --storage-driver="${STORAGE_DRIVER}" \
+              echo "🏗️ Construyendo imagen (sin logs debug)..."
+              podman --storage-driver="${STORAGE_DRIVER}" \
                      --root /var/lib/containers \
                      build \
                        --isolation="${BUILDAH_ISOLATION}" \
+                       --jobs=1 \
+                       --log-level=info \
                        -t ${IMAGE_NAME}:${IMAGE_TAG} .
 
+              echo "🔖 Etiquetando como latest..."
               podman tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
 
-              # Login y push
+              echo "🔐 Login a Docker Hub (oculto)..."
+              set +x
               podman login -u "${DOCKERHUB_USER}" -p "${DOCKERHUB_PASS}" docker.io
+              set -x
 
-              podman --root /var/lib/containers push ${IMAGE_NAME}:${IMAGE_TAG}
-              podman --root /var/lib/containers push ${IMAGE_NAME}:latest
+              echo "📤 Subiendo imagen (con reintentos)..."
+              retry() { n=0; until [ $n -ge 3 ]; do "$@" && break; n=$((n+1)); echo "Reintento $n..."; sleep 3; done; [ $n -lt 3 ]; }
+              retry podman --root /var/lib/containers push ${IMAGE_NAME}:${IMAGE_TAG}
+              retry podman --root /var/lib/containers push ${IMAGE_NAME}:latest
+
+              echo "🧹 Limpieza ligera..."
+              podman image prune -f || true
             '''
           }
         }
