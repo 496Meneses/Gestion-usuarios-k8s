@@ -55,8 +55,8 @@ spec:
                     echo '🐳 Construyendo y subiendo imagen con Kaniko...'
                     sh '''
                         /kaniko/executor \
-                          --context `pwd` \
-                          --dockerfile `pwd`/Dockerfile \
+                          --context $(pwd) \
+                          --dockerfile $(pwd)/Dockerfile \
                           --destination=${IMAGE_NAME}:${IMAGE_TAG} \
                           --destination=${IMAGE_NAME}:latest \
                           --verbosity info
