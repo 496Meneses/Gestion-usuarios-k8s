@@ -21,6 +21,8 @@ spec:
     env:
     - name: PODMAN_USERNS
       value: keep-id
+    - name: STORAGE_DRIVER
+      value: vfs
     volumeMounts:
     - name: podman-storage
       mountPath: /var/lib/containers
@@ -50,7 +52,7 @@ spec:
                     echo '🐳 Construyendo y subiendo imagen con Podman rootless...'
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
                         sh '''
-                            podman build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                            podman --storage-driver=${STORAGE_DRIVER} build -t ${IMAGE_NAME}:${IMAGE_TAG} .
                             podman tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
                             podman login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_PASS} docker.io
                             podman push ${IMAGE_NAME}:${IMAGE_TAG}
