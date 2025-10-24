@@ -14,19 +14,20 @@ spec:
     volumeMounts:
     - name: workspace-volume
       mountPath: /workspace
-  - name: kaniko
-    image: gcr.io/kaniko-project/executor:latest
-    args:
-    - "--version"
+  - name: docker
+    image: docker:24.0.2-cli
+    command:
+    - cat
+    tty: true
     volumeMounts:
-    - name: kaniko-secret
-      mountPath: /kaniko/.docker/
+    - name: docker-sock
+      mountPath: /var/run/docker.sock
     - name: workspace-volume
       mountPath: /workspace
   volumes:
-  - name: kaniko-secret
-    secret:
-      secretName: dockerhub-credentials
+  - name: docker-sock
+    hostPath:
+      path: /var/run/docker.sock
   - name: workspace-volume
     emptyDir: {}
 """
@@ -58,16 +59,17 @@ spec:
 
         stage('Build & Push Image') {
             steps {
-                container('kaniko') {
-                    echo '🐳 Construyendo y subiendo imagen con Kaniko...'
-                    sh '''
-                        /kaniko/executor \
-                          --context $(pwd) \
-                          --dockerfile $(pwd)/Dockerfile \
-                          --destination=${IMAGE_NAME}:${IMAGE_TAG} \
-                          --destination=${IMAGE_NAME}:latest \
-                          --verbosity info
-                    '''
+                container('docker') {
+                    echo '🐳 Construyendo y subiendo imagen con Docker CLI...'
+                    withCredentials([string(credentialsId: 'dockerhub-credentials', variable: 'DOCKERHUB_PASS')]) {
+                        sh '''
+                            docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                            docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+                            echo "${DOCKERHUB_PASS}" | docker login -u "${DOCKERHUB_USER}" --password-stdin
+                            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                            docker push ${IMAGE_NAME}:latest
+                        '''
+                    }
                 }
             }
         }
