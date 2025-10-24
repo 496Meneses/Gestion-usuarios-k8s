@@ -6,42 +6,48 @@ pipeline {
         maven 'maven-3'
     }
 
+    environment {
+        DOCKERHUB_USER = 'acmeneses496'
+        IMAGE_NAME = 'acmeneses496/gestion-usuarios'
+        IMAGE_TAG = 'latest'
+    }
+
     stages {
         stage('Checkout') {
             steps {
-                echo 'Clonando el repositorio...'
+                echo '📥 Clonando el repositorio...'
                 checkout scm
-            }
-        }
-
-        stage('Build') {
-            steps {
-                echo 'Compilando con Maven...'
-                sh 'mvn clean compile'
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Ejecutando pruebas unitarias...'
+                echo '🧪 Ejecutando pruebas unitarias...'
                 sh 'mvn test'
             }
         }
 
-        stage('Package') {
+        stage('Docker Build & Push') {
             steps {
-                echo 'Empaquetando la aplicación...'
-                sh 'mvn package'
+                echo '🐳 Construyendo y subiendo imagen a Docker Hub...'
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'dockerhub-credentials') {
+                        def appImage = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
+                        appImage.push()
+                        // Opcional: también puedes actualizar el tag "latest"
+                        appImage.push("latest")
+                    }
+                }
             }
         }
     }
 
     post {
         success {
-            echo 'Build exitoso!'
+            echo "✅ Build y push exitosos: ${IMAGE_NAME}:${IMAGE_TAG}"
         }
         failure {
-            echo 'Build fallido!'
+            echo '❌ Build fallido!'
         }
     }
 }
