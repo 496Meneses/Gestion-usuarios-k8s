@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gestion-usuarios
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: acmeneses496/gestion-usuarios
+    argocd-image-updater.argoproj.io/gestion-usuarios.update-strategy: latest
+    argocd-image-updater.argoproj.io/write-back-method: git
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/496Meneses/Gestion-usuarios-k8s
+    targetRevision: HEAD
+    path: src/main/resources/argocd/apps/gestion-usuarios
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gestion-usuarios
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
