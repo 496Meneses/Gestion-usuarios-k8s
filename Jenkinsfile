@@ -6,30 +6,25 @@ apiVersion: v1
 kind: Pod
 spec:
   containers:
-  - name: docker
-    image: docker:24.0.6
-    command:
-    - cat
-    tty: true
-    volumeMounts:
-    - name: docker-sock
-      mountPath: /var/run/docker.sock
   - name: maven
     image: maven:3.9.6-eclipse-temurin-17
     command:
     - cat
     tty: true
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:latest
+    command:
+    - cat
+    tty: true
+    volumeMounts:
+    - name: kaniko-secret
+      mountPath: /kaniko/.docker/
   volumes:
-  - name: docker-sock
-    hostPath:
-      path: /var/run/docker.sock
+  - name: kaniko-secret
+    secret:
+      secretName: dockerhub-secret
 """
         }
-    }
-
-    tools {
-        jdk 'jdk-17'
-        maven 'maven-3'
     }
 
     environment {
@@ -55,17 +50,17 @@ spec:
             }
         }
 
-        stage('Docker Build & Push') {
+        stage('Build & Push Image') {
             steps {
-                container('docker') {
-                    echo '🐳 Construyendo y subiendo imagen a Docker Hub...'
-                    script {
-                        docker.withRegistry('https://registry.hub.docker.com', 'dockerhub-credentials') {
-                            def appImage = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
-                            appImage.push()
-                            appImage.push("latest")
-                        }
-                    }
+                container('kaniko') {
+                    echo '🐳 Construyendo y subiendo imagen con Kaniko...'
+                    sh """
+                    /kaniko/executor \
+                      --context `pwd` \
+                      --dockerfile `pwd`/Dockerfile \
+                      --destination=${IMAGE_NAME}:${IMAGE_TAG} \
+                      --destination=${IMAGE_NAME}:latest
+                    """
                 }
             }
         }
@@ -73,10 +68,10 @@ spec:
 
     post {
         success {
-            echo "✅ Build y push exitosos: ${IMAGE_NAME}:${IMAGE_TAG}"
+            echo "✅ Imagen subida correctamente: ${IMAGE_NAME}:${IMAGE_TAG}"
         }
         failure {
-            echo '❌ Build fallido!'
+            echo "❌ Error en la construcción o subida de imagen."
         }
     }
 }
