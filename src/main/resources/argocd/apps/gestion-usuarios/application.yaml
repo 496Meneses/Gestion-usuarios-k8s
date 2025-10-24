@@ -12,13 +12,14 @@ spec:
     helm:
       parameters:
         - name: namespace
-          value: gestion-usuarios
+          value: default
   destination:
     server: https://kubernetes.default.svc
-    namespace: gestion-usuarios
+    namespace: default
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      -
