@@ -83,12 +83,15 @@ spec:
           def sha = env.GIT_COMMIT ?: ''
           if (sha?.length() >= 7) {
             env.IMAGE_TAG = sha.substring(0, 7)
+          } else if (env.BUILD_NUMBER) {
+            env.IMAGE_TAG = "build-${env.BUILD_NUMBER}"
+            echo "⚠️ GIT_COMMIT no disponible, usando BUILD_NUMBER como IMAGE_TAG=${env.IMAGE_TAG}"
           } else {
-            echo "⚠️ GIT_COMMIT no disponible, usando IMAGE_TAG=${env.IMAGE_TAG}"
+            error("❌ No se pudo determinar IMAGE_TAG: GIT_COMMIT y BUILD_NUMBER no disponibles")
           }
 
-          def isMain = (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master')
-          def nonMainWantsLatest = (env.TAG_NON_MAIN_LATEST ?: 'false').toBoolean()
+          def isMain = env.BRANCH_NAME in ['main', 'master']
+          def nonMainWantsLatest = env.TAG_NON_MAIN_LATEST?.trim()?.toLowerCase() == 'true'
           env.SHOULD_TAG_LATEST = (isMain || (!isMain && nonMainWantsLatest)).toString()
 
           echo "🧭 Branch=${env.BRANCH_NAME ?: 'N/A'} | ShortSHA=${env.IMAGE_TAG} | TAG_NON_MAIN_LATEST=${env.TAG_NON_MAIN_LATEST} | SHOULD_TAG_LATEST=${env.SHOULD_TAG_LATEST}"
@@ -112,7 +115,6 @@ spec:
             echo "📦 Espacio en /var/lib/containers:"
             df -h /var/lib/containers || true
 
-            # Info
             podman --root /var/lib/containers --storage-driver="${STORAGE_DRIVER}" info --format '{{json .host}}' || true
           '''
         }
@@ -137,7 +139,6 @@ spec:
                      -t "${FULL_TAGGED}" \
                      -f Dockerfile .
 
-            # Validar existencia
             podman --root /var/lib/containers image exists "${FULL_TAGGED}"
           '''
         }
@@ -192,21 +193,14 @@ spec:
             FULL_TAGGED="${FULL_IMAGE}:${IMAGE_TAG}"
 
             echo "📤 Push tags"
-            retry() {
-              attempts="${2:-3}"
-              n=0
-              until [ $n -ge "${attempts}" ]; do
-                sh -c "$1" && return 0
-                n=$((n+1))
-                sleep 3
-              done
-              return 1
-            }
-
-            retry "podman --root /var/lib/containers push '${FULL_TAGGED}'" 3
+            for i in 1 2 3; do
+              podman --root /var/lib/containers push "${FULL_TAGGED}" && break || sleep 3
+            done
 
             if [ "${SHOULD_TAG_LATEST}" = "true" ]; then
-              retry "podman --root /var/lib/containers push '${FULL_IMAGE}:latest'" 3
+              for i in 1 2 3; do
+                podman --root /var/lib/containers push "${FULL_IMAGE}:latest" && break || sleep 3
+              done
             else
               echo "⏭️ Omitiendo push de :latest"
             fi
