@@ -17,7 +17,6 @@ spec:
     image: maven:3.9.6-eclipse-temurin-17
     command: ["cat"]
     tty: true
-
   - name: podman
     image: quay.io/podman/stable
     command: ["cat"]
@@ -59,17 +58,15 @@ spec:
 
   options {
     timeout(time: 60, unit: 'MINUTES')
-    timestamps()
     disableConcurrentBuilds()
   }
 
   environment {
-    // Repo en Docker Hub
     IMAGE_NAME = 'acmeneses496/gestion-usuarios'
-    // Mantengo el build-N como tag auxiliar si lo quieres usar/pushear:
-    BUILD_TAG  = "build-${BUILD_NUMBER}"
-    // Registro destino
+    IMAGE_TAG  = "build-${BUILD_NUMBER}"
     REGISTRY   = 'docker.io'
+
+    TAG_NON_MAIN_LATEST = 'true'
   }
 
   stages {
@@ -77,6 +74,25 @@ spec:
       steps {
         echo '📥 Checkout...'
         checkout scm
+      }
+    }
+
+    stage('Metadata') {
+      steps {
+        script {
+          def sha = env.GIT_COMMIT ?: ''
+          if (sha?.length() >= 7) {
+            env.IMAGE_TAG = sha.substring(0, 7)
+          } else {
+            echo "⚠️ GIT_COMMIT no disponible, usando IMAGE_TAG=${env.IMAGE_TAG}"
+          }
+
+          def isMain = (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master')
+          def nonMainWantsLatest = (env.TAG_NON_MAIN_LATEST ?: 'false').toBoolean()
+          env.SHOULD_TAG_LATEST = (isMain || (!isMain && nonMainWantsLatest)).toString()
+
+          echo "🧭 Branch=${env.BRANCH_NAME ?: 'N/A'} | ShortSHA=${env.IMAGE_TAG} | TAG_NON_MAIN_LATEST=${env.TAG_NON_MAIN_LATEST} | SHOULD_TAG_LATEST=${env.SHOULD_TAG_LATEST}"
+        }
       }
     }
 
@@ -92,9 +108,11 @@ spec:
             : "${IMAGE_TAG:?Se requiere IMAGE_TAG}"
 
             echo "🔧 Driver=${STORAGE_DRIVER}, Isolation=${BUILDAH_ISOLATION}"
+            echo "🏷️  IMAGE_TAG=${IMAGE_TAG}"
             echo "📦 Espacio en /var/lib/containers:"
             df -h /var/lib/containers || true
 
+            # Info
             podman --root /var/lib/containers --storage-driver="${STORAGE_DRIVER}" info --format '{{json .host}}' || true
           '''
         }
@@ -134,8 +152,12 @@ spec:
             FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
             FULL_TAGGED="${FULL_IMAGE}:${IMAGE_TAG}"
 
-            echo "🔖 Tag a :latest"
-            podman --root /var/lib/containers tag "${FULL_TAGGED}" "${FULL_IMAGE}:latest"
+            if [ "${SHOULD_TAG_LATEST}" = "true" ]; then
+              echo "🔖 Tag a :latest"
+              podman --root /var/lib/containers tag "${FULL_TAGGED}" "${FULL_IMAGE}:latest"
+            else
+              echo "⏭️ Omitiendo tag :latest (BRANCH_NAME='${BRANCH_NAME}', TAG_NON_MAIN_LATEST='${TAG_NON_MAIN_LATEST}')"
+            fi
           '''
         }
       }
@@ -182,7 +204,12 @@ spec:
             }
 
             retry "podman --root /var/lib/containers push '${FULL_TAGGED}'" 3
-            retry "podman --root /var/lib/containers push '${FULL_IMAGE}:latest'" 3
+
+            if [ "${SHOULD_TAG_LATEST}" = "true" ]; then
+              retry "podman --root /var/lib/containers push '${FULL_IMAGE}:latest'" 3
+            else
+              echo "⏭️ Omitiendo push de :latest"
+            fi
           '''
         }
       }
