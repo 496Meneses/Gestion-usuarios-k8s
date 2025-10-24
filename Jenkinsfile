@@ -11,27 +11,11 @@ spec:
     command:
     - cat
     tty: true
-    volumeMounts:
-    - name: workspace-volume
-      mountPath: /workspace
-  - name: docker
-    image: docker:24.0.2-cli
+  - name: podman
+    image: quay.io/podman/stable
     command:
     - cat
     tty: true
-    securityContext:
-      privileged: true
-    volumeMounts:
-    - name: docker-sock
-      mountPath: /var/run/docker.sock
-    - name: workspace-volume
-      mountPath: /workspace
-  volumes:
-  - name: docker-sock
-    hostPath:
-      path: /var/run/docker.sock
-  - name: workspace-volume
-    emptyDir: {}
 """
         }
     }
@@ -61,15 +45,15 @@ spec:
 
         stage('Build & Push Image') {
             steps {
-                container('docker') {
-                    echo '🐳 Construyendo y subiendo imagen con Docker CLI...'
+                container('podman') {
+                    echo '🐳 Construyendo y subiendo imagen con Podman...'
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
                         sh '''
-                            docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
-                            docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
-                            echo "${DOCKERHUB_PASS}" | docker login -u "${DOCKERHUB_USER}" --password-stdin
-                            docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                            docker push ${IMAGE_NAME}:latest
+                            podman build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                            podman tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+                            podman login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_PASS} docker.io
+                            podman push ${IMAGE_NAME}:${IMAGE_TAG}
+                            podman push ${IMAGE_NAME}:latest
                         '''
                     }
                 }
