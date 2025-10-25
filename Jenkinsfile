@@ -99,7 +99,7 @@ spec:
           def commitMsg = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
           echo "📝 Commit message: ${commitMsg}"
 
-          if (commitMsg.contains("[jenkins-no-deploy]")) {
+          if (commitMsg.contains("jenkins-no-deploy:")) {
             echo "⚠️ Commit contiene deploy para jenkins. Saltando pipeline..."
             currentBuild.result = 'NOT_BUILT'
           }
