@@ -169,8 +169,6 @@ spec:
               git clone "$REPO_URL" "$REPO_DIR"
               cd "$REPO_DIR"
               git checkout helm
-              git pull origin helm
-
               echo "🔧 Actualizando imagen..."
               ls -R
               find . -name values.yaml
