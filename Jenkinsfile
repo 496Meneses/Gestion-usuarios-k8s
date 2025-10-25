@@ -38,17 +38,22 @@ spec:
         value: file
       - name: TMPDIR
         value: /var/tmp
-    volumeMounts:
-      - name: podman-storage
-        mountPath: /var/lib/containers
-      - name: podman-tmp
-        mountPath: /var/tmp
+      volumeMounts:
+        - name: podman-storage
+          mountPath: /var/lib/containers
+        - name: podman-tmp
+          mountPath: /var/tmp
+        - name: maven-cache
+          mountPath: /root/.m2
   volumes:
     - name: podman-storage
       emptyDir: {}
     - name: podman-tmp
       emptyDir:
         medium: Memory
+    - name: maven-cache
+      emptyDir: {}
+
 """
     }
   }
