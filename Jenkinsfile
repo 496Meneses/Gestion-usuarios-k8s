@@ -87,9 +87,6 @@ spec:
         script {
           def sha = env.GIT_COMMIT ?: ''
           env.IMAGE_TAG = (sha?.length() >= 7) ? sha.substring(0, 7) : "build-${env.BUILD_NUMBER}"
-          def isMain = env.BRANCH_NAME in ['main', 'master']
-          def nonMainWantsLatest = env.TAG_NON_MAIN_LATEST?.trim()?.toLowerCase() == 'true'
-          env.SHOULD_TAG_LATEST = (isMain || (!isMain && nonMainWantsLatest)).toString()
         }
       }
     }
@@ -98,26 +95,25 @@ spec:
       steps {
         container('podman') {
           sh '''
-                set -Eeuo pipefail
-                export DOCKER_BUILDKIT=1  # ✅ Activa BuildKit
+            set -Eeuo pipefail
+            export DOCKER_BUILDKIT=1
 
-                FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
-                FULL_TAGGED="${FULL_IMAGE}:${IMAGE_TAG}"
+            FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
+            FULL_TAGGED="${FULL_IMAGE}:${IMAGE_TAG}"
 
-                echo "🏗️ Build: ${FULL_TAGGED}"
-                podman --storage-driver="${STORAGE_DRIVER}" \
-                       --root /var/lib/containers \
-                       build \
-                         --isolation="${BUILDAH_ISOLATION}" \
-                         --jobs=1 \
-                         --log-level=info \
-                         -t "${FULL_TAGGED}" \
-                         -f Dockerfile .
+            echo "🏗️ Build: ${FULL_TAGGED}"
+            podman --storage-driver="${STORAGE_DRIVER}" \
+                   --root /var/lib/containers \
+                   build \
+                     --isolation="${BUILDAH_ISOLATION}" \
+                     --jobs=1 \
+                     --log-level=info \
+                     -t "${FULL_TAGGED}" \
+                     -f Dockerfile .
 
-                if [ "${SHOULD_TAG_LATEST}" = "true" ]; then
-                  echo "🔖 Tag a :latest"
-                  podman --root /var/lib/containers tag "${FULL_TAGGED}" "${FULL_IMAGE}:latest"
-                fi
+            echo "🔖 Tag a :latest"
+            podman --root /var/lib/containers tag "${FULL_TAGGED}" "${FULL_IMAGE}:latest"
+
           '''
         }
       }
@@ -145,12 +141,9 @@ spec:
               for i in 1 2 3; do
                 podman --root /var/lib/containers push "${FULL_TAGGED}" && break || sleep 3
               done
-
-              if [ "${SHOULD_TAG_LATEST}" = "true" ]; then
-                for i in 1 2 3; do
-                  podman --root /var/lib/containers push "${FULL_IMAGE}:latest" && break || sleep 3
-                done
-              fi
+              for i in 1 2 3; do
+                podman --root /var/lib/containers push "${FULL_IMAGE}:latest" && break || sleep 3
+              done
             '''
           }
         }
