@@ -219,41 +219,42 @@ spec:
       }
     }
 
-stage('Update Deployment Manifest') {
-      steps {
-        container('maven') {
-          withCredentials([usernamePassword(
-            credentialsId: 'git-credentials-id',
-            usernameVariable: 'GIT_USER',
-            passwordVariable: 'GIT_PASS'
-          )]) {
-            sh '''
-              set -Eeuo pipefail
+    stage('Update Deployment Manifest') {
+                  steps {
+                    container('maven') {
+                      withCredentials([usernamePassword(
+                        credentialsId: 'git-credentials-id',
+                        usernameVariable: 'GIT_USER',
+                        passwordVariable: 'GIT_PASS'
+                      )]) {
+                        sh '''
+                          set -Eeuo pipefail
 
-              REPO_URL="https://${GIT_USER}:${GIT_PASS}@github.com/496Meneses/Gestion-usuarios-k8s.git"
-              REPO_DIR="repo-k8s"
-              DEPLOYMENT_FILE="k8s/deployment.yaml"
-              IMAGE_TAG="${IMAGE_TAG}"
-              IMAGE_NAME="${IMAGE_NAME}"
+                          REPO_URL="https://${GIT_USER}:${GIT_PASS}@github.com/496Meneses/Gestion-usuarios-k8s.git"
+                          REPO_DIR="gestion-usuarios-k8s"
+                          DEPLOYMENT_FILE="src/main/resources/helm/gestion-usuarios/values.yaml"
+                          IMAGE_TAG="${IMAGE_TAG}"
+                          IMAGE_NAME="${IMAGE_NAME}"
 
-              echo "📥 Clonando repositorio de manifiestos..."
-              git clone "$REPO_URL" "$REPO_DIR"
-              cd "$REPO_DIR"
+                          echo "📥 Clonando repositorio de manifiestos..."
+                          git clone "$REPO_URL" "$REPO_DIR"
+                          cd "$REPO_DIR"
 
-              echo "🔧 Actualizando imagen en el manifiesto..."
-              sed -i "s|${IMAGE_NAME}:.*|${IMAGE_NAME}:${IMAGE_TAG}|g" "$DEPLOYMENT_FILE"
+                          echo "🔧 Actualizando imagen en el manifiesto..."
+                          sed -i "s|\(${IMAGE_NAME}:\\).*|\\1${IMAGE_TAG}|g" "$DEPLOYMENT_FILE"
 
-              echo "📤 Commit y push..."
-              git config user.name "jenkins"
-              git config user.email "jenkins@local"
-              git add "$DEPLOYMENT_FILE"
-              git commit -m "Actualiza imagen a ${IMAGE_TAG} desde Jenkins"
-              git push origin main
-            '''
-          }
+                          echo "📤 Commit y push..."
+                          git config user.name "jenkins"
+                          git config user.email "jenkins@local"
+                          git add "$DEPLOYMENT_FILE"
+                          git commit -m "Actualiza imagen a ${IMAGE_TAG} desde Jenkins"
+                          git push origin main
+                        '''
+               }
+            }
         }
-      }
-    }
+   }
+
 
   post {
     success {
