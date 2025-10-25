@@ -1,53 +1,52 @@
-# Gestión de Usuarios (microservicio)
+# Gestión de Usuarios - Despliegue en Kubernetes
 
-Microservicio sencillo para gestionar usuarios, creado como práctica de aprendizaje de DevOps. Incluye configuración para ejecutar con Docker y desplegar en Kubernetes (k8s).
+Este repositorio contiene la tarea de despliegue del microservicio de usuarios utilizando Jenkins, Docker, Kubernetes y ArgoCD. A continuación se incluyen los enlaces y las instrucciones necesarias para revisar la entrega y acceder a los recursos desplegados.
 
-## Resumen
-- Microservicio ligero para operaciones básicas sobre usuarios (ej. CRUD).
-- Contenedorizado con Docker.
-- Manifiestos básicos de Kubernetes para despliegue y exposición.
-- Diseñado únicamente con fines educativos/prácticos.
+## Entregables y enlaces de la entrega
 
-## Requisitos
-- Docker
-- kubectl (con acceso a un cluster Kubernetes)
-- (Opcional) Minikube o kind para pruebas locales
-- Java — instalar si desea ejecutar fuera de contenedor
+- Video grabado (ver demostración): `[Actividad3.mp4](https://unisabanaedu-my.sharepoint.com/:v:/g/personal/andresmeor_unisabana_edu_co/EfNl_G-_YyxGm5zyrc64bDsBOwG4zs4ihlwn2jVLlG-Zbw?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJTdHJlYW1XZWJBcHAiLCJyZWZlcnJhbFZpZXciOiJTaGFyZURpYWxvZy1MaW5rIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXcifX0%3D&e=6BEMkY)`  
+  - Nota: Para ver el video, por favor acceder con el correo de la Universidad de La Sabana (unisabana).
 
-## Ejecutar con Docker (local)
-1. Construir la imagen:
-   docker build -t gestion-usuarios:local .
-2. Ejecutar el contenedor:
-   docker run --rm -p 8080:8080 gestion-usuarios:local
-3. Probar la API en:
-   http://localhost:8080/
+- Aplicación expuesta mediante Ingress (NGINX):  
+  http://134.209.131.242.nip.io/usuario
 
-(Ajuste el puerto según la configuración del servicio.)
+- Jenkins (pipeline de CI/CD):  
+  http://143.244.156.113:30000/
 
-## Despliegue en Kubernetes
-1. Asegúrese de tener acceso a un cluster y kubectl configurado.
-2. Aplicar manifiestos de k8s (suponiendo que están en la carpeta `k8s/`):
-   kubectl apply -f k8s/
-3. Verificar pods y servicios:
-   kubectl get pods
-   kubectl get svc
-4. Para exponer localmente (si usa port-forward):
-   kubectl port-forward deployment/gestion-usuarios 8080:8080
+- Repositorio en GitHub:  
+  https://github.com/496Meneses/Gestion-usuarios-k8s
 
-## Estructura sugerida del repositorio
-- /cmd, /src, /app — código fuente del microservicio
-- Dockerfile — definición de la imagen
-- k8s/ — manifiestos (Deployment, Service, ConfigMap, Secret, etc.)
-- README.md — este archivo
+- Imágenes en Docker Hub (usuario):  
+  https://hub.docker.com/repositories/acmeneses496
 
-## Consideraciones
-- Proyecto de práctica: no está pensado para producción.
-- No incluir secretos en texto plano; usar Secrets o gestores de secretos para entornos reales.
-- Añadir healthchecks, readiness/liveness probes y políticas de seguridad antes de producción.
+- ArgoCD (acceso local):  
+  Ejecutar:  
+  kubectl port-forward svc/argocd-server -n argocd 8080:443  
+  Luego acceder en el navegador a: http://localhost:8080
 
-## Contribuciones
-Si quieres mejorar esta práctica (añadir tests, CI/CD, mejores manifiestos, helm chart), abre un pull request o crea un issue.
+## Notas importantes
+
+- Para reproducir la demostración en video, usar el correo institucional de Unisabana para el acceso al contenido provisto.
+- Esta entrega corresponde a una actividad de despliegue del microservicio de usuarios y muestra la integración entre Jenkins (CI), Docker (imágenes), Kubernetes (orquestación) y ArgoCD (GitOps).
+
+## Acceder y revisar rápidamente
+
+1. Ver el video explicativo: `Actividad3.mp4` (usar correo Unisabana).  
+2. Ver la aplicación en producción usando nginx: abrir http://134.209.131.242.nip.io/usuario  
+3. Revisar el pipeline y logs en Jenkins: http://143.244.156.113:30000/  
+4. Consultar las imágenes construidas en Docker Hub: https://hub.docker.com/repositories/acmeneses496  
+5. Abrir ArgoCD con port-forward (si necesita revisar la sincronización y recursos declarados):
+   - kubectl port-forward svc/argocd-server -n argocd 8080:443
+   - Abrir http://localhost:8080
+
+## Estructura del repositorio (resumen)
+- manifests/      -> Manifiestos Kubernetes (Deployments, Services, Ingress, etc.)
+- jenkins/        -> Declaraciones y pipeline relacionadas a Jenkins
+- src/            -> Código fuente del microservicio de usuarios
+- Dockerfile      -> Construcción de la imagen del servicio
+- README.md       -> Este archivo
+
+## Contacto
+Si necesita acceso adicional al cluster o alguna clarificación sobre la entrega, puede contactarme a través del repositorio o mediante el medio provisto en la entrega.
 
 ---
-
-Creado como ejercicio de aprendizaje de DevOps por el grupo de la asignatura Arquitectura de software 1. Uni Sabana
