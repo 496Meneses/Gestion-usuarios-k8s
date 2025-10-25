@@ -171,7 +171,7 @@ spec:
 
               echo "🔧 Actualizando imagen..."
               pwd
-              ls
+              ls -R
               find . -name values.yaml
               sed -i "s|image: ${IMAGE_NAME}:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g" "$DEPLOYMENT_FILE"
 
