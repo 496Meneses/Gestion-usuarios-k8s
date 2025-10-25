@@ -163,7 +163,7 @@ spec:
 
               REPO_URL="https://${GIT_USER}:${GIT_PASS}@github.com/496Meneses/Gestion-usuarios-k8s.git"
               REPO_DIR="gestion-usuarios-k8s"
-              DEPLOYMENT_FILE="/src/main/resources/helm/gestion-usuarios/values.yaml"
+              DEPLOYMENT_FILE="./src/main/resources/helm/gestion-usuarios/values.yaml"
 
               echo "📥 Clonando manifiesto..."
               git clone "$REPO_URL" "$REPO_DIR"
@@ -172,6 +172,7 @@ spec:
               echo "🔧 Actualizando imagen..."
               pwd
               ls
+              find . -name values.yaml
               sed -i "s|image: ${IMAGE_NAME}:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g" "$DEPLOYMENT_FILE"
 
               git config user.name "jenkins"
