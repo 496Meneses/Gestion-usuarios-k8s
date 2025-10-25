@@ -170,6 +170,8 @@ spec:
               cd "$REPO_DIR"
 
               echo "🔧 Actualizando imagen..."
+              pwd
+              ls
               sed -i "s|image: ${IMAGE_NAME}:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g" "$DEPLOYMENT_FILE"
 
               git config user.name "jenkins"
