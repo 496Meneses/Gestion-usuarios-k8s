@@ -168,6 +168,7 @@ spec:
               echo "📥 Clonando manifiesto..."
               git clone "$REPO_URL" "$REPO_DIR"
               git checkout helm
+              git pull origin helm
               cd "$REPO_DIR"
 
               echo "🔧 Actualizando imagen..."
