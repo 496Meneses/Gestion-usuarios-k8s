@@ -1,6 +1,6 @@
 # Default values for gestion-usuarios.
 
-replicaCount: 1
+replicaCount: 2
 
 image:
   repository: acmeneses496/gestion-usuarios
@@ -25,9 +25,9 @@ securityContext: {}
 
 # --- Servicio interno expuesto dentro del cluster ---
 service:
-  type: ClusterIP   # 👈 Importante: usamos Ingress, no se necesita LoadBalancer
-  port: 80          # Puerto expuesto dentro del cluster
-  targetPort: 8080  # Puerto donde corre tu app dentro del contenedor
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
   protocol: TCP
   labels:
     app: gestion-usuarios
@@ -56,14 +56,13 @@ httpRoute:
             type: PathPrefix
             value: /headers
 
-resources: {}
-# Ejemplo (si quieres limitar recursos):
-# limits:
-#   cpu: 200m
-#   memory: 512Mi
-# requests:
-#   cpu: 100m
-#   memory: 256Mi
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "200m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
 
 autoscaling:
   enabled: false
@@ -77,6 +76,5 @@ volumeMounts: []
 nodeSelector: {}
 tolerations: []
 affinity: {}
-
 
 
