@@ -264,4 +264,5 @@ spec:
       echo "❌ Error en build o push"
     }
   }
+ }
 }
