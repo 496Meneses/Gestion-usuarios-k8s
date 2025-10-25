@@ -101,7 +101,8 @@ spec:
 
           if (commitMsg.contains("jenkins-no-deploy:")) {
             echo "⚠️ Commit contiene deploy para jenkins. Saltando pipeline..."
-            currentBuild.result = 'NOT_BUILT'
+            currentBuild.result = 'NOT_BUILT'\
+            return
           }
         }
       }
