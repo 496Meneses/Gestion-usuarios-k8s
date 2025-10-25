@@ -13,6 +13,21 @@ spec:
     runAsGroup: 1000
     fsGroup: 1000
   containers:
+  - name: jenkins-controller
+    image: jenkins/jenkins:lts
+    resources:
+      requests:
+        memory: "512Mi"   # memoria mínima para programarse
+        cpu: "250m"
+      limits:
+        memory: "1Gi"     # máximo que puede usar
+        cpu: "500m"
+    ports:
+      - containerPort: 8080
+      - containerPort: 50000
+    env:
+      - name: JAVA_OPTS
+        value: "-Xmx512m"
   - name: maven
     image: maven:3.9.6-eclipse-temurin-17
     command: ["cat"]
@@ -52,6 +67,7 @@ spec:
       emptyDir: {}
     - name: podman-tmp
       emptyDir: {}
+
 """
     }
   }
