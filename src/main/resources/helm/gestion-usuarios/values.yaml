@@ -5,7 +5,7 @@ replicaCount: 3
 image:
   repository: acmeneses496/gestion-usuarios
   pullPolicy: IfNotPresent
-  tag: "28ec108"
+  tag: "6cbf814"
 
 imagePullSecrets: []
 nameOverride: ""
