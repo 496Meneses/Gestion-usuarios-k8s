@@ -241,7 +241,7 @@ spec:
                           cd "$REPO_DIR"
 
                           echo "🔧 Actualizando imagen en el manifiesto..."
-                          sed -i "s|\(${IMAGE_NAME}:\\).*|\\1${IMAGE_TAG}|g" "$DEPLOYMENT_FILE"
+                          sed -i "s|image: ${IMAGE_NAME}:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g"
 
                           echo "📤 Commit y push..."
                           git config user.name "jenkins"
