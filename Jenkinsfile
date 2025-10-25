@@ -28,11 +28,11 @@ spec:
         type: Unconfined
     resources:
       requests:
-        cpu: "250m"
-        memory: "256Mi"
+        memory: "128Mi"
+        cpu: "100m"
       limits:
-        cpu: "500m"
-        memory: "512Mi"
+        memory: "256Mi"
+        cpu: "250m"
     env:
       - name: STORAGE_DRIVER
         value: vfs
