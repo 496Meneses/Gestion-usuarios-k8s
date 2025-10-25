@@ -1,9 +1,9 @@
-{{- if .Values.httpRoute.enabled -}}
+2{{- if .Values.httpRoute.enabled -}}
 {{- $fullName := include "gestion-usuarios.fullname" . -}}
 {{- $svcPort := .Values.service.port -}}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
-metadata:
+metadata:1
   name: {{ $fullName }}
   labels:
     {{- include "gestion-usuarios.labels" . | nindent 4 }}

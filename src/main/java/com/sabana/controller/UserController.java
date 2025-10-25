@@ -18,7 +18,7 @@ public class UserController {
     public UserController(UserService service) {
         this.service = service;
     }
-
+    // CRUD Operations
     @GetMapping
     public List<User> list() {
         return service.findAll();
