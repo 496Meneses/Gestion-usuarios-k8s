@@ -73,7 +73,9 @@ spec:
     REGISTRY   = 'docker.io'
     TAG_NON_MAIN_LATEST = 'true'
   }
-
+  triggers {
+    githubPush()
+  }
   stages {
     stage('Checkout') {
       steps {
@@ -87,6 +89,20 @@ spec:
         script {
           def sha = env.GIT_COMMIT ?: ''
           env.IMAGE_TAG = (sha?.length() >= 7) ? sha.substring(0, 7) : "build-${env.BUILD_NUMBER}"
+        }
+      }
+    }
+
+    stage('Filter Commit') {
+      steps {
+        script {
+          def commitMsg = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
+          echo "📝 Commit message: ${commitMsg}"
+
+          if (commitMsg.contains("[jenkins-no-deploy]")) {
+            echo "⚠️ Commit contiene deploy para jenkins. Saltando pipeline..."
+            currentBuild.result = 'NOT_BUILT'
+          }
         }
       }
     }
@@ -170,14 +186,11 @@ spec:
               cd "$REPO_DIR"
               git checkout helm
               echo "🔧 Actualizando imagen..."
-              ls -R
-              find . -name values.yaml
               sed -i "s/^  tag: \".*\"/  tag: \"${IMAGE_TAG}\"/" "$DEPLOYMENT_FILE"
-
               git config user.name "jenkins"
               git config user.email "jenkins@local"
               git add "$DEPLOYMENT_FILE"
-              git commit -m "Actualiza imagen a ${IMAGE_TAG} desde Jenkins"
+              git commit -m "jenkins-no-deploy: Actualiza imagen a ${IMAGE_TAG} desde Jenkins"
               git push origin helm
             '''
           }
