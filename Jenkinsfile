@@ -98,24 +98,26 @@ spec:
       steps {
         container('podman') {
           sh '''
-            set -Eeuo pipefail
-            FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
-            FULL_TAGGED="${FULL_IMAGE}:${IMAGE_TAG}"
+                set -Eeuo pipefail
+                export DOCKER_BUILDKIT=1  # ✅ Activa BuildKit
 
-            echo "🏗️ Build imagen con BuildKit y cache persistente: ${FULL_TAGGED}"
-            export BUILDKIT=1
-            podman build \
-                   --storage-driver="${STORAGE_DRIVER}" \
-                   --root /var/lib/containers \
-                   --isolation="${BUILDAH_ISOLATION}" \
-                   --build-arg BUILDKIT_INLINE_CACHE=1 \
-                   --tag "${FULL_TAGGED}" \
-                   -f Dockerfile .
+                FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
+                FULL_TAGGED="${FULL_IMAGE}:${IMAGE_TAG}"
 
-            if [ "${SHOULD_TAG_LATEST}" = "true" ]; then
-              echo "🔖 Tag a :latest"
-              podman tag "${FULL_TAGGED}" "${FULL_IMAGE}:latest"
-            fi
+                echo "🏗️ Build: ${FULL_TAGGED}"
+                podman --storage-driver="${STORAGE_DRIVER}" \
+                       --root /var/lib/containers \
+                       build \
+                         --isolation="${BUILDAH_ISOLATION}" \
+                         --jobs=1 \
+                         --log-level=info \
+                         -t "${FULL_TAGGED}" \
+                         -f Dockerfile .
+
+                if [ "${SHOULD_TAG_LATEST}" = "true" ]; then
+                  echo "🔖 Tag a :latest"
+                  podman --root /var/lib/containers tag "${FULL_TAGGED}" "${FULL_IMAGE}:latest"
+                fi
           '''
         }
       }
