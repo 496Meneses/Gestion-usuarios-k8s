@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gestion-usuarios-svc
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+  labels:
+    app: gestion-usuarios
+spec:
+  type: LoadBalancer
+  selector:
+    app: gestion-usuarios
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
