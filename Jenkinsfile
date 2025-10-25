@@ -172,7 +172,7 @@ spec:
               echo "🔧 Actualizando imagen..."
               ls -R
               find . -name values.yaml
-              sed -i "s|image: ${IMAGE_NAME}:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g" "$DEPLOYMENT_FILE"
+              sed -i "s/^  tag: \".*\"/  tag: \"${IMAGE_TAG}\"/" "$DEPLOYMENT_FILE"
 
               git config user.name "jenkins"
               git config user.email "jenkins@local"
