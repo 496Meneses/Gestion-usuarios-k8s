@@ -13,25 +13,18 @@ spec:
     runAsGroup: 1000
     fsGroup: 1000
   containers:
-  - name: jenkins-controller
-    image: jenkins/jenkins:lts
-    resources:
-      requests:
-        memory: "512Mi"   # memoria mínima para programarse
-        cpu: "250m"
-      limits:
-        memory: "1Gi"     # máximo que puede usar
-        cpu: "500m"
-    ports:
-      - containerPort: 8080
-      - containerPort: 50000
-    env:
-      - name: JAVA_OPTS
-        value: "-Xmx512m"
   - name: maven
     image: maven:3.9.6-eclipse-temurin-17
     command: ["cat"]
     tty: true
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "250m"
+
   - name: podman
     image: quay.io/podman/stable
     command: ["cat"]
@@ -110,28 +103,6 @@ spec:
           env.SHOULD_TAG_LATEST = (isMain || (!isMain && nonMainWantsLatest)).toString()
 
           echo "🧭 Branch=${env.BRANCH_NAME ?: 'N/A'} | ShortSHA=${env.IMAGE_TAG} | TAG_NON_MAIN_LATEST=${env.TAG_NON_MAIN_LATEST} | SHOULD_TAG_LATEST=${env.SHOULD_TAG_LATEST}"
-        }
-      }
-    }
-
-    stage('Preflight') {
-      steps {
-        container('podman') {
-          sh '''
-            set -Eeuo pipefail
-            : "${STORAGE_DRIVER:=vfs}"
-            : "${BUILDAH_ISOLATION:=chroot}"
-            : "${REGISTRY:?Se requiere REGISTRY}"
-            : "${IMAGE_NAME:?Se requiere IMAGE_NAME}"
-            : "${IMAGE_TAG:?Se requiere IMAGE_TAG}"
-
-            echo "🔧 Driver=${STORAGE_DRIVER}, Isolation=${BUILDAH_ISOLATION}"
-            echo "🏷️  IMAGE_TAG=${IMAGE_TAG}"
-            echo "📦 Espacio en /var/lib/containers:"
-            df -h /var/lib/containers || true
-
-            podman --root /var/lib/containers --storage-driver="${STORAGE_DRIVER}" info --format '{{json .host}}' || true
-          '''
         }
       }
     }
