@@ -18,7 +18,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "gestion-usuarios.labels" . | nindent 8 }}
+        {{- include "gestion-usuarios.selectorLabels" . | nindent 8 }}
           {{- with .Values.podLabels }}
           {{- toYaml . | nindent 8 }}
           {{- end }}
