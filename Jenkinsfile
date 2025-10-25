@@ -189,8 +189,9 @@ spec:
       steps {
         container('podman') {
           sh '''
-            echo "🧹 Limpieza de imágenes"
-            podman --root /var/lib/containers image prune -f || true
+            echo "🧹 Limpieza ligera de Podman"
+            podman --root /var/lib/containers image prune -f --filter dangling=true || true
+            podman --root /var/lib/containers container prune -f || true
           '''
         }
       }
