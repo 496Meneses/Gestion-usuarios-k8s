@@ -53,7 +53,6 @@ spec:
         medium: Memory
     - name: maven-cache
       emptyDir: {}
-
 """
     }
   }
@@ -89,6 +88,22 @@ spec:
       }
     }
 
+    stage('Build Maven') {
+      steps {
+        container('podman') {
+          sh '''
+            set -Eeuo pipefail
+            echo "📦 Build Maven con caché"
+            podman run --rm \
+              -v $PWD:/app \
+              -v /root/.m2:/root/.m2 \
+              -w /app maven:3.9.1-eclipse-temurin-17 \
+              mvn clean package -DskipTests
+          '''
+        }
+      }
+    }
+
     stage('Build & Tag Image') {
       steps {
         container('podman') {
@@ -97,7 +112,7 @@ spec:
             FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
             FULL_TAGGED="${FULL_IMAGE}:${IMAGE_TAG}"
 
-            echo "🏗️ Build: ${FULL_TAGGED}"
+            echo "🏗️ Build imagen: ${FULL_TAGGED}"
             podman --storage-driver="${STORAGE_DRIVER}" \
                    --root /var/lib/containers \
                    build \
