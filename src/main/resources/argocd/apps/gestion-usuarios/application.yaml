@@ -7,6 +7,13 @@ metadata:
     argocd-image-updater.argoproj.io/image-list: gestion-usuarios=acmeneses496/gestion-usuarios
     argocd-image-updater.argoproj.io/gestion-usuarios.update-strategy: latest
     argocd-image-updater.argoproj.io/gestion-usuarios.allow-tags: regexp:^([a-f0-9]{7})$
+
+    argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/git-branch: helm
+    argocd-image-updater.argoproj.io/git-commit-message: "chore: bump imagen gestion-usuarios to {{image.tag}}"
+
+    argocd-image-updater.argoproj.io/gestion-usuarios.helm.image-name: image.repository
+    argocd-image-updater.argoproj.io/gestion-usuarios.helm.image-tag: image.tag
 spec:
   project: default
   source:
