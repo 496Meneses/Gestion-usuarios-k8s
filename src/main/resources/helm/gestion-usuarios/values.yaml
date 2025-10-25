@@ -1,6 +1,6 @@
 # Default values for gestion-usuarios.
 
-replicaCount: 1
+replicaCount: 3
 
 image:
   repository: acmeneses496/gestion-usuarios
