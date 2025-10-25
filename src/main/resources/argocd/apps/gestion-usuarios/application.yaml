@@ -6,6 +6,7 @@ metadata:
   annotations:
     argocd-image-updater.argoproj.io/image-list: gestion-usuarios=acmeneses496/gestion-usuarios
     argocd-image-updater.argoproj.io/gestion-usuarios.update-strategy: latest
+    argocd-image-updater.argoproj.io/gestion-usuarios.allow-tags: regexp:^([a-f0-9]{7})$
 spec:
   project: default
   source:
