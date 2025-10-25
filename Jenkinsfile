@@ -9,22 +9,10 @@ metadata:
     container.apparmor.security.beta.kubernetes.io/podman: unconfined
 spec:
   securityContext:
-    runAsUser: 1000
-    runAsGroup: 1000
-    fsGroup: 1000
+    runAsUser: 0
+    runAsGroup: 0
+    fsGroup: 0
   containers:
-  - name: maven
-    image: maven:3.9.6-eclipse-temurin-17
-    command: ["cat"]
-    tty: true
-    resources:
-      requests:
-        memory: "128Mi"
-        cpu: "100m"
-      limits:
-        memory: "256Mi"
-        cpu: "250m"
-
   - name: podman
     image: quay.io/podman/stable
     command: ["cat"]
@@ -36,14 +24,14 @@ spec:
         type: Unconfined
     resources:
       requests:
-        memory: "128Mi"
-        cpu: "100m"
+        memory: "192Mi"
+        cpu: "150m"
       limits:
-        memory: "256Mi"
-        cpu: "250m"
+        memory: "384Mi"
+        cpu: "300m"
     env:
       - name: STORAGE_DRIVER
-        value: vfs
+        value: overlay
       - name: BUILDAH_ISOLATION
         value: chroot
       - name: PODMAN_EVENTS_BACKEND
@@ -59,8 +47,8 @@ spec:
     - name: podman-storage
       emptyDir: {}
     - name: podman-tmp
-      emptyDir: {}
-
+      emptyDir:
+        medium: Memory
 """
     }
   }
@@ -73,7 +61,6 @@ spec:
   environment {
     IMAGE_NAME = 'acmeneses496/gestion-usuarios'
     REGISTRY   = 'docker.io'
-
     TAG_NON_MAIN_LATEST = 'true'
   }
 
@@ -89,25 +76,15 @@ spec:
       steps {
         script {
           def sha = env.GIT_COMMIT ?: ''
-          if (sha?.length() >= 7) {
-            env.IMAGE_TAG = sha.substring(0, 7)
-          } else if (env.BUILD_NUMBER) {
-            env.IMAGE_TAG = "build-${env.BUILD_NUMBER}"
-            echo "⚠️ GIT_COMMIT no disponible, usando BUILD_NUMBER como IMAGE_TAG=${env.IMAGE_TAG}"
-          } else {
-            error("❌ No se pudo determinar IMAGE_TAG: GIT_COMMIT y BUILD_NUMBER no disponibles")
-          }
-
+          env.IMAGE_TAG = (sha?.length() >= 7) ? sha.substring(0, 7) : "build-${env.BUILD_NUMBER}"
           def isMain = env.BRANCH_NAME in ['main', 'master']
           def nonMainWantsLatest = env.TAG_NON_MAIN_LATEST?.trim()?.toLowerCase() == 'true'
           env.SHOULD_TAG_LATEST = (isMain || (!isMain && nonMainWantsLatest)).toString()
-
-          echo "🧭 Branch=${env.BRANCH_NAME ?: 'N/A'} | ShortSHA=${env.IMAGE_TAG} | TAG_NON_MAIN_LATEST=${env.TAG_NON_MAIN_LATEST} | SHOULD_TAG_LATEST=${env.SHOULD_TAG_LATEST}"
         }
       }
     }
 
-    stage('Build Image') {
+    stage('Build & Tag Image') {
       steps {
         container('podman') {
           sh '''
@@ -125,32 +102,16 @@ spec:
                      -t "${FULL_TAGGED}" \
                      -f Dockerfile .
 
-            podman --root /var/lib/containers image exists "${FULL_TAGGED}"
-          '''
-        }
-      }
-    }
-
-    stage('Tag Image') {
-      steps {
-        container('podman') {
-          sh '''
-            set -Eeuo pipefail
-            FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
-            FULL_TAGGED="${FULL_IMAGE}:${IMAGE_TAG}"
-
             if [ "${SHOULD_TAG_LATEST}" = "true" ]; then
               echo "🔖 Tag a :latest"
               podman --root /var/lib/containers tag "${FULL_TAGGED}" "${FULL_IMAGE}:latest"
-            else
-              echo "⏭️ Omitiendo tag :latest (BRANCH_NAME='${BRANCH_NAME}', TAG_NON_MAIN_LATEST='${TAG_NON_MAIN_LATEST}')"
             fi
           '''
         }
       }
     }
 
-    stage('Registry Login') {
+    stage('Registry Login & Push') {
       steps {
         container('podman') {
           withCredentials([usernamePassword(
@@ -160,36 +121,59 @@ spec:
           )]) {
             sh '''
               set -Eeuo pipefail
+              FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
+              FULL_TAGGED="${FULL_IMAGE}:${IMAGE_TAG}"
+
               echo "🔐 Login registry"
               set +x
               podman --root /var/lib/containers login -u "${DOCKERHUB_USER}" -p "${DOCKERHUB_PASS}" "${REGISTRY}"
               set -x
+
+              echo "📤 Push tags"
+              for i in 1 2 3; do
+                podman --root /var/lib/containers push "${FULL_TAGGED}" && break || sleep 3
+              done
+
+              if [ "${SHOULD_TAG_LATEST}" = "true" ]; then
+                for i in 1 2 3; do
+                  podman --root /var/lib/containers push "${FULL_IMAGE}:latest" && break || sleep 3
+                done
+              fi
             '''
           }
         }
       }
     }
-    stage('Push Image') {
+
+    stage('Update Deployment Manifest') {
       steps {
         container('podman') {
-          sh '''
-            set -Eeuo pipefail
-            FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
-            FULL_TAGGED="${FULL_IMAGE}:${IMAGE_TAG}"
+          withCredentials([usernamePassword(
+            credentialsId: 'git-credentials-id',
+            usernameVariable: 'GIT_USER',
+            passwordVariable: 'GIT_PASS'
+          )]) {
+            sh '''
+              set -Eeuo pipefail
 
-            echo "📤 Push tags"
-            for i in 1 2 3; do
-              podman --root /var/lib/containers push "${FULL_TAGGED}" && break || sleep 3
-            done
+              REPO_URL="https://${GIT_USER}:${GIT_PASS}@github.com/496Meneses/Gestion-usuarios-k8s.git"
+              REPO_DIR="gestion-usuarios-k8s"
+              DEPLOYMENT_FILE="src/main/resources/helm/gestion-usuarios/values.yaml"
 
-            if [ "${SHOULD_TAG_LATEST}" = "true" ]; then
-              for i in 1 2 3; do
-                podman --root /var/lib/containers push "${FULL_IMAGE}:latest" && break || sleep 3
-              done
-            else
-              echo "⏭️ Omitiendo push de :latest"
-            fi
-          '''
+              echo "📥 Clonando manifiesto..."
+              git clone "$REPO_URL" "$REPO_DIR"
+              cd "$REPO_DIR"
+
+              echo "🔧 Actualizando imagen..."
+              sed -i "s|image: ${IMAGE_NAME}:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g" "$DEPLOYMENT_FILE"
+
+              git config user.name "jenkins"
+              git config user.email "jenkins@local"
+              git add "$DEPLOYMENT_FILE"
+              git commit -m "Actualiza imagen a ${IMAGE_TAG} desde Jenkins"
+              git push origin main
+            '''
+          }
         }
       }
     }
@@ -198,51 +182,13 @@ spec:
       steps {
         container('podman') {
           sh '''
-            set -Eeuo pipefail
-            echo "🧹 Limpieza"
+            echo "🧹 Limpieza de imágenes"
             podman --root /var/lib/containers image prune -f || true
           '''
         }
       }
     }
-
-    stage('Update Deployment Manifest') {
-                  steps {
-                    container('maven') {
-                      withCredentials([usernamePassword(
-                        credentialsId: 'git-credentials-id',
-                        usernameVariable: 'GIT_USER',
-                        passwordVariable: 'GIT_PASS'
-                      )]) {
-                        sh '''
-                          set -Eeuo pipefail
-
-                          REPO_URL="https://${GIT_USER}:${GIT_PASS}@github.com/496Meneses/Gestion-usuarios-k8s.git"
-                          REPO_DIR="gestion-usuarios-k8s"
-                          DEPLOYMENT_FILE="src/main/resources/helm/gestion-usuarios/values.yaml"
-                          IMAGE_TAG="${IMAGE_TAG}"
-                          IMAGE_NAME="${IMAGE_NAME}"
-
-                          echo "📥 Clonando repositorio de manifiestos..."
-                          git clone "$REPO_URL" "$REPO_DIR"
-                          cd "$REPO_DIR"
-
-                          echo "🔧 Actualizando imagen en el manifiesto..."
-                          sed -i "s|image: ${IMAGE_NAME}:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g"
-
-                          echo "📤 Commit y push..."
-                          git config user.name "jenkins"
-                          git config user.email "jenkins@local"
-                          git add "$DEPLOYMENT_FILE"
-                          git commit -m "Actualiza imagen a ${IMAGE_TAG} desde Jenkins"
-                          git push origin main
-                        '''
-               }
-            }
-        }
-   }
   }
-
 
   post {
     success {
@@ -252,5 +198,4 @@ spec:
       echo "❌ Error en build o push"
     }
   }
- }
-
+}
