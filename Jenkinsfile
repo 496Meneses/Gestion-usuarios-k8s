@@ -87,8 +87,7 @@ spec:
     stage('Metadata') {
       steps {
         script {
-          def sha = env.GIT_COMMIT ?: ''
-          env.IMAGE_TAG = (sha?.length() >= 7) ? sha.substring(0, 7) : "build-${env.BUILD_NUMBER}"
+          env.IMAGE_TAG = "build-${env.BUILD_NUMBER}"
         }
       }
     }
