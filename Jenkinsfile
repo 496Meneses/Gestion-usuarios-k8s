@@ -24,11 +24,11 @@ spec:
         type: Unconfined
     resources:
       requests:
-        memory: "192Mi"
-        cpu: "150m"
+        memory: "256Mi"
+        cpu: "250m"
       limits:
-        memory: "384Mi"
-        cpu: "300m"
+        memory: "1Gi"
+        cpu: "1000m"
     env:
       - name: STORAGE_DRIVER
         value: overlay
