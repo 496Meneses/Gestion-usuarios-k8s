@@ -1,6 +1,6 @@
 # Default values for gestion-usuarios.
 
-replicaCount: 3
+replicaCount: 1
 
 image:
   repository: acmeneses496/gestion-usuarios
@@ -77,3 +77,6 @@ volumeMounts: []
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+
+
