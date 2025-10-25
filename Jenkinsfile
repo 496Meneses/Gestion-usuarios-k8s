@@ -167,6 +167,7 @@ spec:
 
               echo "📥 Clonando manifiesto..."
               git clone "$REPO_URL" "$REPO_DIR"
+              git checkout helm
               cd "$REPO_DIR"
 
               echo "🔧 Actualizando imagen..."
@@ -179,7 +180,7 @@ spec:
               git config user.email "jenkins@local"
               git add "$DEPLOYMENT_FILE"
               git commit -m "Actualiza imagen a ${IMAGE_TAG} desde Jenkins"
-              git push origin main
+              git push origin helm
             '''
           }
         }
