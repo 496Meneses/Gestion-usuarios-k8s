@@ -18,7 +18,7 @@ public class UserController {
     public UserController(UserService service) {
         this.service = service;
     }
-    // CRUD METHODS
+    // CRUD Operations
     @GetMapping
     public List<User> list() {
         return service.findAll();
@@ -39,6 +39,7 @@ public class UserController {
     public User update(@PathVariable Long id, @RequestBody User user) {
         return service.update(id, user);
     }
+
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {

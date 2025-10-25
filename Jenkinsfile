@@ -87,23 +87,7 @@ spec:
     stage('Metadata') {
       steps {
         script {
-          def sha = env.GIT_COMMIT ?: ''
-          env.IMAGE_TAG = (sha?.length() >= 7) ? sha.substring(0, 7) : "build-${env.BUILD_NUMBER}"
-        }
-      }
-    }
-
-    stage('Filter Commit') {
-      steps {
-        script {
-          def commitMsg = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
-          echo "📝 Commit message: ${commitMsg}"
-
-          if (commitMsg.contains("jenkins-no-deploy:")) {
-            echo "⚠️ Commit contiene deploy para jenkins. Saltando pipeline..."
-            currentBuild.result = 'ABORTED'
-            return
-          }
+          env.IMAGE_TAG = "build-${env.BUILD_NUMBER}"
         }
       }
     }
@@ -185,14 +169,14 @@ spec:
               echo "📥 Clonando manifiesto..."
               git clone "$REPO_URL" "$REPO_DIR"
               cd "$REPO_DIR"
-              git checkout helm
+              git checkout tags
               echo "🔧 Actualizando imagen..."
               sed -i "s/^  tag: \".*\"/  tag: \"${IMAGE_TAG}\"/" "$DEPLOYMENT_FILE"
               git config user.name "jenkins"
               git config user.email "jenkins@local"
               git add "$DEPLOYMENT_FILE"
               git commit -m "jenkins-no-deploy: Actualiza imagen a ${IMAGE_TAG} desde Jenkins"
-              git push origin helm
+              git push origin tags
             '''
           }
         }
